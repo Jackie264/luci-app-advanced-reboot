@@ -493,7 +493,6 @@ function obtain_device_info() {
  * @sideeffects  Calls fw_setenv/fw_saveenv or writes to dual-flag MTD.
  */
 function boot_partition(req) {
-	log("boot_partition req=" + json(req));
 	/* extract target partition number from RPC args */
 	let number;
 	let val;
