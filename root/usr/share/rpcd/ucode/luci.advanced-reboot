@@ -200,19 +200,18 @@ function get_partition_info_current() {
 
 /* Find the UBI device number for a given MTD index via sysfs.
  *
- * Iterates /sys/devices/virtual/ubi/ubiN/mtd_num to find a match.
+ * Checks /sys/class/ubi/ubiN/mtd_num entries to find a match.
  *
  * @param {Number|String} mtd_idx  MTD index to look up.
  * @returns {Number|null} UBI device number, or null if not found.
  */
 function find_ubi_dev_by_mtd(mtd_idx) {
-	for (let i = 0; i < 32; i++) {
-		let mtd = fs.readfile("/sys/devices/virtual/ubi/ubi" + i + "/mtd_num");
-		if (!mtd) break;
-		if (trim(mtd) == "" + mtd_idx)
-			return i;
-	}
-	return null;
+	let out = command(
+		"for d in /sys/class/ubi/ubi[0-9]*; do " +
+		"[ \"$(cat \"$d/mtd_num\" 2>/dev/null)\" = \"" + mtd_idx + "\" ] && " +
+		"echo \"${d##*/ubi}\" && break; done"
+	);
+	return out && length(out) ? int(out) : null;
 }
 
 /* Determine if an alternate partition can be mounted.
@@ -292,26 +291,18 @@ function alt_partition_mount(op_ubi, ubi_vol) {
  * @sideeffects  umounts /var/alt_rom, ubidetach, removes ubiblock nodes.
  */
 function alt_partition_unmount(op_ubi, ubi_vol) {
-	let mtdCount = command(
-		'ubinfo | grep "Present UBI devices" | tr "," "\\n" | grep -c "ubi"'
-	);
-	mtdCount = int(mtdCount) || 10;
 	command("umount /var/alt_rom");
-	for (let i = 0; i <= mtdCount; i++) {
-		let mtd = fs.readfile("/sys/devices/virtual/ubi/ubi" + i + "/mtd_num");
-		if (!mtd) break;
-		mtd = trim(mtd);
-		if (mtd == "" + op_ubi) {
-			/* remove any ubiblock nodes on this ubi dev */
-			for (let vid = 0; vid < 16; vid++)
-				command(
-					"ubiblock --remove /dev/ubi" + i + "_" + vid + " >/dev/null 2>&1"
-				);
-			if (!alt_ubi_pre_attached)
-				command("ubidetach -m " + op_ubi + " >/dev/null 2>&1");
-			command("rm -rf /var/alt_rom");
-		}
+	let dev = find_ubi_dev_by_mtd(op_ubi);
+	if (dev != null) {
+		/* remove any ubiblock nodes on this ubi dev */
+		for (let vid = 0; vid < 16; vid++)
+			command(
+				"ubiblock --remove /dev/ubi" + dev + "_" + vid + " >/dev/null 2>&1"
+			);
+		if (!alt_ubi_pre_attached)
+			command("ubidetach -m " + op_ubi + " >/dev/null 2>&1");
 	}
+	command("rm -rf /var/alt_rom");
 }
 
 /* Get label/OS info from an alternative partition, using UBI mount flow.
