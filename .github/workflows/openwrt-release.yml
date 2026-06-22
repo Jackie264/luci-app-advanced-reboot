@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install ucode build dependencies
         run: |
@@ -89,7 +89,7 @@ jobs:
 
     steps:
       - name: 🧾 Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 📛 Set PKG_NAME from repo
         run: echo "PKG_NAME=${{ github.event.repository.name }}" >> "$GITHUB_ENV"
@@ -194,7 +194,7 @@ jobs:
 
     steps:
       - name: 🧾 Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🔍 Extract version and release from Makefile
         id: version
